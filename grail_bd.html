@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)file:///C:/Users/User/Downloads/block_diagram.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotic Hand – System Block Diagram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+  :root {
+    --bg:        #0a0e1a;
+    --grid:      rgba(0,200,255,0.04);
+    --esp:       #00c8ff;
+    --esp-glow:  rgba(0,200,255,0.25);
+    --input:     #00ff9f;
+    --output:    #ff6b35;
+    --power:     #ffd600;
+    --proto:     #c084fc;
+    --line:      rgba(255,255,255,0.12);
+    --label-bg:  rgba(10,14,26,0.85);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  /* animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  h1 {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--esp);
+    font-size: clamp(14px, 2.5vw, 22px);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-shadow: 0 0 20px var(--esp);
+  }
+  .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    color: rgba(255,255,255,0.3);
+    font-size: 11px;
+    letter-spacing: 3px;
+    margin-bottom: 48px;
+  }
+
+  /* ── legend ── */
+  .legend {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 44px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.6);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── diagram canvas ── */
+  .diagram {
+    position: relative;
+    width: min(900px, 100%);
+    /* tall enough for all rows */
+    height: 740px;
+  }
+
+  /* ── SVG connectors ── */
+  .connectors {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  /* ── generic block ── */
+  .block {
+    position: absolute;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 1.35;
+    text-align: center;
+    animation: fadeIn 0.6s ease both;
+  }
+  .block .sub {
+    font-size: 10px;
+    font-weight: 400;
+    font-family: 'Share Tech Mono', monospace;
+    opacity: 0.75;
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* ESP32 centre */
+  .esp {
+    border: 2px solid var(--esp);
+    color: var(--esp);
+    background: rgba(0,200,255,0.07);
+    box-shadow: 0 0 32px var(--esp-glow), inset 0 0 20px rgba(0,200,255,0.05);
+    width: 180px;
+    padding: 18px 14px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 32px var(--esp-glow), inset 0 0 20px rgba(0,200,255,0.05); }
+    50%      { box-shadow: 0 0 52px rgba(0,200,255,0.45), inset 0 0 30px rgba(0,200,255,0.1); }
+  }
+
+  /* input blocks */
+  .inp {
+    border: 1.5px solid var(--input);
+    color: var(--input);
+    background: rgba(0,255,159,0.06);
+    box-shadow: 0 0 14px rgba(0,255,159,0.15);
+  }
+
+  /* output / servo blocks */
+  .out {
+    border: 1.5px solid var(--output);
+    color: var(--output);
+    background: rgba(255,107,53,0.07);
+    box-shadow: 0 0 14px rgba(255,107,53,0.18);
+  }
+
+  /* power block */
+  .pwr {
+    border: 1.5px solid var(--power);
+    color: var(--power);
+    background: rgba(255,214,0,0.07);
+    box-shadow: 0 0 14px rgba(255,214,0,0.2);
+  }
+
+  /* protocol badges */
+  .badge {
+    position: absolute;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 10;
+    animation: fadeIn 1s ease both;
+  }
+  .badge-uart  { background: rgba(192,132,252,0.18); color: var(--proto); border: 1px solid var(--proto); }
+  .badge-usb   { background: rgba(192,132,252,0.18); color: var(--proto); border: 1px solid var(--proto); }
+  .badge-pwm   { background: rgba(255,107,53,0.18);  color: var(--output);border: 1px solid var(--output);}
+  .badge-pwr   { background: rgba(255,214,0,0.15);   color: var(--power); border: 1px solid var(--power); }
+  .badge-cam   { background: rgba(0,255,159,0.12);   color: var(--input); border: 1px solid var(--input); }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform: translateY(6px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* pin labels next to servos */
+  .pin-label {
+    position: absolute;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* ── footer note ── */
+  .footnote {
+    margin-top: 40px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>GRAIL — System Block Diagram</h1>
+<p class="subtitle">ESP32 · MediaPipe · 6-DOF Servo Array</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--input)"></div>INPUT</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--output)"></div>OUTPUT / SERVO</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--esp)"></div>MCU</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--power)"></div>POWER</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--proto)"></div>PROTOCOL</div>
+</div>
+
+<div class="diagram" id="diagram">
+
+  <!-- SVG wires -->
+  <svg class="connectors" id="svg">
+    <defs>
+      <marker id="arr-teal" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#00c8ff"></path>
+      </marker>
+      <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#00ff9f"></path>
+      </marker>
+      <marker id="arr-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#ff6b35"></path>
+      </marker>
+      <marker id="arr-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#ffd600"></path>
+      </marker>
+    </defs><path d="M150,159.84453201293945 C190,159.84453201293945 314.0000305175781,340.00003814697266 354.0000305175781,340.00003814697266" fill="none" stroke="#00ff9f" stroke-width="1.8" marker-end="url(#arr-green)"></path><line x1="85" y1="283.76953125" x2="85" y2="195.9195327758789" stroke="#00ff9f" stroke-width="1.8" marker-end="url(#arr-green)" stroke-dasharray="4,3"></line><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,99.84453201293945 726.0000305175781,99.84453201293945" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,199.84453201293945 726.0000305175781,199.84453201293945" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,299.84453201293945 726.0000305175781,299.84453201293945" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,399.84453201293945 726.0000305175781,399.84453201293945" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,499.84453201293945 726.0000305175781,499.84453201293945" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><path d="M540.0000305175781,370.00003814697266 C633.0000305175781,370.00003814697266 633.0000305175781,599.8445320129395 726.0000305175781,599.8445320129395" fill="none" stroke="#ff6b35" stroke-width="1.8" marker-end="url(#arr-orange)"></path><line x1="515.0000305175781" y1="669.1195678710938" x2="515.0000305175781" y2="627.7695693969727" stroke="#ffd600" stroke-width="1.8" marker-end="url(#arr-yellow)"></line><path d="M580.0000305175781,591.6945686340332 C640.0000305175781,591.6945686340332 692.0000305175781,629.8445320129395 732.0000305175781,629.8445320129395" fill="none" stroke="#ffd600" stroke-width="1.8" marker-end="url(#arr-yellow)" stroke-dasharray="5,4"></path></svg>
+
+  <!-- ═══════════════ CENTRE ═══════════════ -->
+  <div class="block esp" id="esp">
+    ESP32
+    <span class="sub">240 MHz Dual-Core<br>Wi-Fi + BT</span>
+  </div>
+
+  <!-- ═══════════════ LEFT — INPUTS ═══════════════ -->
+
+  <!-- Laptop / Python -->
+  <div class="block inp" id="laptop" style="width:130px; left:20px; top:120px;">
+     Laptop
+    <span class="sub">Python Script<br>MediaPipe CV</span>
+  </div>
+
+  <!-- Camera -->
+  <div class="block inp" id="camera" style="width:130px; left:20px; top:280px;">
+     USB Camera
+    <span class="sub">Hand Tracking<br>Input</span>
+  </div>
+
+  <!-- ═══════════════ RIGHT — SERVOS ═══════════════ -->
+
+  <div class="block out" id="s1" style="width:148px; right:20px; top:60px;">
+    S1 — Thumb Tip
+    <span class="sub">GPIO 13 · 50 Hz PWM<br>Activates on pinch</span>
+  </div>
+
+  <div class="block out" id="s2" style="width:148px; right:20px; top:160px;">
+    S2 — Index
+    <span class="sub">GPIO 12 · 50 Hz PWM<br>Open=180° Close=0°</span>
+  </div>
+
+  <div class="block out" id="s3" style="width:148px; right:20px; top:260px;">
+    S3 — Middle
+    <span class="sub">GPIO 14 · 50 Hz PWM<br>Open=0° Close=180°</span>
+  </div>
+
+  <div class="block out" id="s4" style="width:148px; right:20px; top:360px;">
+    S4 — Ring + Pinky
+    <span class="sub">GPIO 27 · 50 Hz PWM<br>Open=180° Close=0°</span>
+  </div>
+
+  <div class="block out" id="s5" style="width:148px; right:20px; top:460px;">
+    S5 — Thumb Base
+    <span class="sub">GPIO 26 · 50 Hz PWM<br>Open=180° Close=90°</span>
+  </div>
+
+  <div class="block out" id="s6" style="width:148px; right:20px; top:560px;">
+    S6 — Wrist
+    <span class="sub">GPIO 25 · 50 Hz PWM<br>Flip=180° Normal=0°</span>
+  </div>
+
+  <!-- ═══════════════ BOTTOM — POWER ═══════════════ -->
+
+  <div class="block pwr" id="bat" style="width:130px; left:50%; transform:translateX(-50%); bottom:20px;">
+    12V Battery
+    <span class="sub">LiPo / Lead-Acid</span>
+  </div>
+
+  <div class="block pwr" id="buck" style="width:130px; left:50%; transform:translateX(-50%); bottom:120px;">
+    Buck Converter
+    <span class="sub">12V → 5V<br>Servo Power Rail</span>
+  </div>
+
+<div class="badge badge-uart" style="left: 224px; top: 233.922px;">USB-UART</div><div class="badge badge-cam" style="left: 91px; top: 231.845px;">USB</div><div class="badge badge-pwm" style="left: 558px; top: 320px;">50 Hz PWM</div><div class="badge badge-pwr" style="left: 523px; top: 640.445px;">12 V DC</div><div class="badge badge-pwr" style="left: 600px; top: 615.695px;">5 V · Servo Rail</div></div><!-- /diagram -->
+
+<!-- Protocol badges injected by JS after layout -->
+
+<p class="footnote">// GND shared between ESP32 · Servo rail · Buck converter</p>
+
+<script>
+// Wait for layout then draw SVG arrows + badges
+window.addEventListener('load', () => {
+  const diag = document.getElementById('diagram');
+  const svg  = document.getElementById('svg');
+  const DR   = diag.getBoundingClientRect();
+
+  function cx(el) {
+    const r = el.getBoundingClientRect();
+    return r.left - DR.left + r.width / 2;
+  }
+  function cy(el) {
+    const r = el.getBoundingClientRect();
+    return r.top - DR.top + r.height / 2;
+  }
+  function right(el) {
+    const r = el.getBoundingClientRect();
+    return r.right - DR.left;
+  }
+  function left(el) {
+    const r = el.getBoundingClientRect();
+    return r.left - DR.left;
+  }
+  function top(el) {
+    const r = el.getBoundingClientRect();
+    return r.top - DR.top;
+  }
+  function bottom(el) {
+    const r = el.getBoundingClientRect();
+    return r.bottom - DR.top;
+  }
+
+  const espEl   = document.getElementById('esp');
+  const laptop  = document.getElementById('laptop');
+  const camera  = document.getElementById('camera');
+  const bat     = document.getElementById('bat');
+  const buck    = document.getElementById('buck');
+
+  const servos = ['s1','s2','s3','s4','s5','s6'].map(id => document.getElementById(id));
+
+  // marker def
+  svg.innerHTML = `
+    <defs>
+      <marker id="arr-teal"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#00c8ff"/>
+      </marker>
+      <marker id="arr-green"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#00ff9f"/>
+      </marker>
+      <marker id="arr-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#ff6b35"/>
+      </marker>
+      <marker id="arr-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#ffd600"/>
+      </marker>
+    </defs>`;
+
+  function line(x1,y1,x2,y2, color, markerId, dash='') {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','line');
+    el.setAttribute('x1',x1); el.setAttribute('y1',y1);
+    el.setAttribute('x2',x2); el.setAttribute('y2',y2);
+    el.setAttribute('stroke', color);
+    el.setAttribute('stroke-width','1.8');
+    el.setAttribute('marker-end',`url(#${markerId})`);
+    if (dash) el.setAttribute('stroke-dasharray', dash);
+    svg.appendChild(el);
+  }
+
+  function path(d, color, markerId, dash='') {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+    el.setAttribute('d', d);
+    el.setAttribute('fill','none');
+    el.setAttribute('stroke', color);
+    el.setAttribute('stroke-width','1.8');
+    el.setAttribute('marker-end',`url(#${markerId})`);
+    if (dash) el.setAttribute('stroke-dasharray', dash);
+    svg.appendChild(el);
+  }
+
+  function badge(text, cls, x, y) {
+    const b = document.createElement('div');
+    b.className = `badge ${cls}`;
+    b.textContent = text;
+    b.style.left = x + 'px';
+    b.style.top  = y + 'px';
+    diag.appendChild(b);
+  }
+
+  /* ── Laptop → ESP32 (USB/UART) ── */
+  const lx1 = right(laptop), ly1 = cy(laptop);
+  const lx2 = left(espEl)-6, ly2 = cy(espEl) - 30;
+  path(`M${lx1},${ly1} C${lx1+40},${ly1} ${lx2-40},${ly2} ${lx2},${ly2}`,
+       '#00ff9f','arr-green');
+  badge('USB-UART', 'badge-uart',
+        (lx1 + lx2)/2 - 28, (ly1 + ly2)/2 - 16);
+
+  /* ── Camera → Laptop (USB) ── */
+  const camRx = right(camera), camRy = cy(camera);
+  const lapLx = left(laptop)+cx(laptop)-cx(laptop); // same x
+  // vertical line from camera up to laptop bottom
+  const lapBot = bottom(laptop);
+  line(cx(camera), top(camera)-2, cx(laptop), lapBot+2, '#00ff9f','arr-green','4,3');
+  badge('USB', 'badge-cam', cx(camera)+6, (top(camera)+lapBot)/2 - 8);
+
+  /* ── ESP32 → each servo (PWM) ── */
+  const espRight = right(espEl);
+  const espCY    = cy(espEl);
+  servos.forEach((s, i) => {
+    const sx = left(s) - 6;
+    const sy = cy(s);
+    const midX = espRight + (sx - espRight)/2;
+    path(`M${espRight},${espCY} C${midX},${espCY} ${midX},${sy} ${sx},${sy}`,
+         '#ff6b35','arr-orange');
+  });
+  badge('50 Hz PWM', 'badge-pwm', espRight+18, espCY - 50);
+
+  /* ── Battery → Buck ── */
+  const batTop  = top(bat);
+  const buckBot = bottom(buck);
+  line(cx(bat), batTop-2, cx(buck), buckBot+2, '#ffd600','arr-yellow');
+  badge('12 V DC', 'badge-pwr', cx(bat)+8, (batTop+buckBot)/2 - 8);
+
+  /* ── Buck → Servo power rail (dashed, horizontal to right) ── */
+  const buckR  = right(buck);
+  const buckCY = cy(buck);
+  const sRailX = left(servos[5]);
+  const sRailY = cy(servos[5]) + 30;
+  path(`M${buckR},${buckCY} C${buckR+60},${buckCY} ${sRailX-40},${sRailY} ${sRailX},${sRailY}`,
+       '#ffd600','arr-yellow','5,4');
+  badge('5 V · Servo Rail', 'badge-pwr', buckR+20, buckCY+24);
+
+  /* ── Buck → ESP32 3.3V (dashed up) ── */
+  const buckTop = top(buck);
+  const espBot  = bottom(espEl);
+  path(`M${cx(buck)},${buckTop} C${cx(buck)},${buckTop-40} ${cx(espEl)},${espBot+40} ${cx(espEl)},${espBot+2}`,
+       '#ffd600','arr-yellow','4,3');
+  badge('3.3 V', 'badge-pwr', cx(buck)+8, (buckTop+espBot)/2 + 10);
+});
+</script>
+
+
+</body></html>
